@@ -4,6 +4,9 @@
 import numpy
 import pygame
 import time
+import random
+random.seed()
+
 import pprint
 pp = pprint.PrettyPrinter(indent=4, width=110).pprint
 
@@ -25,26 +28,30 @@ pp = pprint.PrettyPrinter(indent=4, width=110).pprint
 
 #     pygame.image.save(surf, filename)
 
-image = pygame.image.load("Passion_flower.jpg")
+# image = pygame.image.load("Passion_flower.jpg")
 
-screen = pygame.display.set_mode([800,420])
+grid_size = [1440, 850]
+screen = pygame.display.set_mode( grid_size )
 pygame.init()
-# screen.fill([0,0,0])
-# screen.blit( image, (0, 0) )
-# pygame.display.flip()
 
-# time.sleep(2)
+image = pygame.Surface(grid_size)
+image_array1 = pygame.surfarray.pixels3d( image )
+image_array2 = pygame.surfarray.pixels3d( image )
 
-surf3d = pygame.surfarray.pixels3d( image )
-pp(type(surf3d))
+for pixel in numpy.nditer(image_array1, flags=['external_loop'], op_flags=['readwrite']):
+    pixel[...] = [0, random.randint(0,1) * 255, 0]
 
-for xpx in xrange( len(surf3d) ):
-    surf3d = pygame.surfarray.pixels3d( image )
-    surf3d[ xpx][240] = [255, 255, 255]
+pygame.surfarray.blit_array(screen, image_array1)
 
-del surf3d
-screen.blit( image, (0,0))
+it = numpy.nditer(image_array2, flags=['multi_index'])
+while not it.finished:
+    total = image_array1[ it.multi_index[0]-1 ][ it.multi_index[1]-1 ][ it.multi_index[2] ] + image_array1[ it.multi_index[0]-1 ][ it.multi_index[1]   ][ it.multi_index[2] ] + image_array1[ it.multi_index[0]-1 ][ it.multi_index[1]+1 ][ it.multi_index[2] ] + image_array1[ it.multi_index[0]   ][ it.multi_index[1]-1 ][ it.multi_index[2] ] + image_array1[ it.multi_index[0]   ][ it.multi_index[1]+1 ][ it.multi_index[2] ] + image_array1[ it.multi_index[0]+1 ][ it.multi_index[1]-1 ][ it.multi_index[2] ] + image_array1[ it.multi_index[0]+1 ][ it.multi_index[1]   ][ it.multi_index[2] ] + image_array1[ it.multi_index[0]+1 ][ it.multi_index[1]+1 ][ it.multi_index[2] ]
+    pp(total)
+    # it[0] =
+    it.iternext()
+
+pygame.surfarray.blit_array(screen, image_array2)
+# screen.blit(image, (0,0))
 pygame.display.flip()
-
 time.sleep(2)
 
