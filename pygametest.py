@@ -30,7 +30,7 @@ pp = pprint.PrettyPrinter(indent=4, width=110).pprint
 
 # image = pygame.image.load("Passion_flower.jpg")
 
-grid_size = [1440, 850]
+grid_size = [640, 480]
 screen = pygame.display.set_mode( grid_size )
 pygame.init()
 
@@ -45,9 +45,24 @@ pygame.surfarray.blit_array(screen, image_array1)
 
 it = numpy.nditer(image_array2, flags=['multi_index'])
 while not it.finished:
-    total = image_array1[ it.multi_index[0]-1 ][ it.multi_index[1]-1 ][ it.multi_index[2] ] + image_array1[ it.multi_index[0]-1 ][ it.multi_index[1]   ][ it.multi_index[2] ] + image_array1[ it.multi_index[0]-1 ][ it.multi_index[1]+1 ][ it.multi_index[2] ] + image_array1[ it.multi_index[0]   ][ it.multi_index[1]-1 ][ it.multi_index[2] ] + image_array1[ it.multi_index[0]   ][ it.multi_index[1]+1 ][ it.multi_index[2] ] + image_array1[ it.multi_index[0]+1 ][ it.multi_index[1]-1 ][ it.multi_index[2] ] + image_array1[ it.multi_index[0]+1 ][ it.multi_index[1]   ][ it.multi_index[2] ] + image_array1[ it.multi_index[0]+1 ][ it.multi_index[1]+1 ][ it.multi_index[2] ]
-    pp(total)
-    # it[0] =
+    x = it.multi_index[0]
+    y = it.multi_index[1]
+    color_index = it.multi_index[2]
+    if (color_index == 0):
+        # pp((x, y, color_index))
+        total = 0
+        total += image_array1[ x-1 ][ y-1 ][ color_index ]
+        total += image_array1[ x-1 ][ y   ][ color_index ]
+        if (y < grid_size[1]-1):
+            total += image_array1[ x-1 ][ y+1 ][ color_index ]
+        total += image_array1[ x   ][ y-1 ][ color_index ]
+        if (y < grid_size[1]-1):
+            total += image_array1[ x   ][ y+1 ][ color_index ]
+        if (x < grid_size[0]-1):
+            total += image_array1[ x+1 ][ y-1 ][ color_index ]
+            total += image_array1[ x+1 ][ y   ][ color_index ]
+            if (y < grid_size[1]-1):
+                total += image_array1[ x+1 ][ y+1 ][ color_index ]
     it.iternext()
 
 pygame.surfarray.blit_array(screen, image_array2)
