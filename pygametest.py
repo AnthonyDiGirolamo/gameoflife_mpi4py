@@ -30,7 +30,7 @@ pp = pprint.PrettyPrinter(indent=4, width=110).pprint
 
 # image = pygame.image.load("Passion_flower.jpg")
 
-grid_size = [640, 480]
+grid_size = [160, 120]
 screen = pygame.display.set_mode( grid_size )
 pygame.init()
 
@@ -39,7 +39,7 @@ image_array1 = pygame.surfarray.pixels3d( image )
 image_array2 = pygame.surfarray.pixels3d( image )
 
 for pixel in numpy.nditer(image_array1, flags=['external_loop'], op_flags=['readwrite']):
-    pixel[...] = [0, random.randint(0,1) * 254, 0]
+    pixel[...] = [0, 254 if random.random() > 0.75 else 0, 0]
 
 pygame.surfarray.blit_array(screen, image_array1)
 pygame.display.flip()
@@ -68,7 +68,7 @@ for i in range(200):
 
             neighbors = int(total / 254)
             cell = image_array1[x][y][color_index]
-            # pp("old cell: {}, neighbors: {}, total: {}".format(cell, neighbors, total))
+            pp("old cell: {}, neighbors: {}, total: {}".format(cell, neighbors, total))
             new_cell = 0
             if (cell == 0):
                 if (neighbors == 3):

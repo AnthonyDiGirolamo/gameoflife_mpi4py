@@ -38,5 +38,5 @@ neighbors = [0, 0, 0, 0]
 
 neighbors[NORTH], neighbors[SOUTH] = communicator.Shift(0, 1)
 neighbors[EAST],  neighbors[WEST]  = communicator.Shift(1, 1)
-# print("Rank {} Neighbors: {} {} {} {}".format(rank, *neighbors))
+print("Rank {} Neighbors: {} {} {} {}".format(rank, *neighbors))
 
