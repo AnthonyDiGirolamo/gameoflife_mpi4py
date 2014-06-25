@@ -33,8 +33,11 @@ pp = pprint.PrettyPrinter(indent=4, width=110).pprint
 
 # grid_size = [512, 384]
 
-grid_size = [160, 120]
-image = pygame.image.load("glidergun.bmp") # load an image
+# grid_size = [160, 120]
+# image = pygame.image.load("glidergun.bmp") # load an image
+
+grid_size = [758, 192]
+image = pygame.image.load("Conways_game_of_life_breeder.bmp") # load an image
 
 screen = pygame.display.set_mode( grid_size )
 pygame.init()
@@ -80,7 +83,7 @@ def game_of_life(grid):
     grid[1:-1,1:-1,1:2][birth | survive] = 255
 
 
-for i in range(600):
+for i in range(2400):
     # Print the array with ascii
     # it = numpy.nditer(image_array1, flags=['multi_index'], op_flags=['readwrite'])
     # while not it.finished:
