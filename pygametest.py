@@ -72,7 +72,7 @@ def game_of_life(grid):
 
     # create a new array with the count of the neigbors of the previous iteration
     N = (grid[0:-2,0:-2,1:2] + grid[0:-2,1:-1,1:2] + grid[0:-2,2:,1:2] +
-         grid[1:-1,0:-2,1:2]                               + grid[1:-1,2:,1:2] +
+         grid[1:-1,0:-2,1:2]                       + grid[1:-1,2:,1:2] +
          grid[2:  ,0:-2,1:2] + grid[2:  ,1:-1,1:2] + grid[2:  ,2:,1:2])
 
     # if we have thee neighbors and the current cell is dead, give birth
