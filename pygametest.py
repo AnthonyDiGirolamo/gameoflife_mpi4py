@@ -30,22 +30,24 @@ pp = pprint.PrettyPrinter(indent=4, width=110).pprint
 #         pygame.surfarray.blit_array(surf, pixels)
 #     pygame.image.save(surf, filename)
 
+# create a blank image
 
 # grid_size = [512, 384]
+# image = pygame.Surface(grid_size)
 
-# grid_size = [160, 120]
-# image = pygame.image.load("glidergun.bmp") # load an image
+# load an image
+# image = pygame.image.load("glidergun.bmp")
+image = pygame.image.load("Conways_game_of_life_breeder.bmp")
+grid_size = image.get_size()
 
-grid_size = [758, 192]
-image = pygame.image.load("Conways_game_of_life_breeder.bmp") # load an image
-
+# set the window size
 screen = pygame.display.set_mode( grid_size )
+# create the pygame window
 pygame.init()
-
-# image = pygame.Surface(grid_size) # create a blank image
 
 image_array1 = pygame.surfarray.pixels3d( image )
 
+# Randomly set pixel values
 # for pixel in numpy.nditer(image_array1, flags=['external_loop'], op_flags=['readwrite']):
 #     pixel[...] = [0, 255 if random.random() > 0.85 else 0, 0]
 
