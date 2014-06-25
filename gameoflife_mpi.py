@@ -72,24 +72,23 @@ if __name__ == '__main__':
     local_array = numpy.zeros(local_size, int)
     local_array[1:-1, 1:-1] = rank+1
 
-    column_type = MPI.INT.Create_vector(local_size[1]-2, 1, local_size[0]).Commit()
-
     # print("Rank {} Array \n{}".format(rank, local_array))
     # sys.stdout.flush()
 
     # Send my top row to my north neighbor, receive my bottom ghost row from my south neighbor
     communicator.Sendrecv(sendbuf=local_array[1, :], dest=neighbors[NORTH], source=neighbors[SOUTH], recvbuf=local_array[-1, :])
+
     # Send my bottom row to my sour neighbor, receive my top ghost row from my north neighbor
     communicator.Sendrecv(sendbuf=local_array[-2, :], dest=neighbors[SOUTH], source=neighbors[NORTH], recvbuf=local_array[0, :])
 
     # Send my left column to my east neighbor, receive my right ghost column from my west neighbor
-    left_column = numpy.array(local_array[1:-1, 1].transpose())
+    left_column          = numpy.array(local_array[1:-1, 1].transpose())
     received_left_column = numpy.zeros(local_size[0]-2, int)
     communicator.Sendrecv(sendbuf=left_column, dest=neighbors[EAST], source=neighbors[WEST], recvbuf=received_left_column)
     local_array[1:-1, 0] = received_left_column.transpose()
 
     # Send my right column to my west neighbor, receive my left ghost column from my east neighbor
-    right_column = numpy.array(local_array[1:-1, -2].transpose())
+    right_column          = numpy.array(local_array[1:-1, -2].transpose())
     received_right_column = numpy.zeros(local_size[0]-2, int)
     communicator.Sendrecv(sendbuf=right_column, dest=neighbors[WEST], source=neighbors[EAST], recvbuf=received_right_column)
     local_array[1:-1, -1] = received_right_column.transpose()
