@@ -1,40 +1,78 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-"""Naval Fate.
+"""Game of Life MPI
 
 Usage:
-  naval_fate.py ship new <name>...
-  naval_fate.py ship <name> move <x> <y> [--speed=<kn>]
-  naval_fate.py ship shoot <x> <y>
-  naval_fate.py mine (set|remove) <x> <y> [--moored | --drifting]
-  naval_fate.py (-h | --help)
-  naval_fate.py --version
+  gameoflife_mpi.py [-i NUMBER] random [-r ROWS] [-c COLUMNS]
+  gameoflife_mpi.py [--iterations=NUMBER] image FILENAME
 
 Options:
-  -h --help     Show this screen.
-  --version     Show version.
-  --speed=<kn>  Speed in knots [default: 10].
-  --moored      Moored (anchored) mine.
-  --drifting    Drifting mine.
+  -h --help                      Show this screen.
+  --version                      Show version.
+  -r ROWS --rows=ROWS            Number of Rows [default: 640]
+  -c COLS --columns=cols         Number of Columns [default: 480]
+  -i NUMBER --iterations=NUMBER  Total iterations [default: 2400]
 
 """
+
 from mpi4py import MPI
+from docopt import docopt
 import numpy
 import sys
+import pygame
+import time
+import random
+random.seed()
 
-import pprint
-pp = pprint.PrettyPrinter(indent=4, width=110).pprint
-from docopt import docopt
+# import pprint
+# pp = pprint.PrettyPrinter(indent=4, width=110).pprint
 
 if __name__ == '__main__':
-    # arguments = docopt(__doc__, version='Naval Fate 2.0')
-    # print(arguments)
+    arguments = docopt(__doc__, version='Game of Life MPI 1.0')
 
     size = MPI.COMM_WORLD.Get_size()
     rank = MPI.COMM_WORLD.Get_rank()
 
-    grid_size           = [16, 16]
+    # if rank == 0:
+    #     print(arguments)
+
+    grid_size = numpy.array([16, 16])
+
+    if arguments['random']:
+        grid_size = [int(arguments['--rows']), int(arguments['--columns'])]
+        image = pygame.Surface(grid_size)
+        # Randomly set pixel values
+        # for pixel in numpy.nditer(image_array1, flags=['external_loop'], op_flags=['readwrite']):
+        #     pixel[...] = [0, 255 if random.random() > 0.85 else 0, 0]
+
+    elif arguments['image']:
+        if rank == 0:
+            # load an image
+            image = pygame.image.load( arguments['FILENAME'] )
+            grid_size[0] = image.get_size()[0]
+            grid_size[1] = image.get_size()[1]
+        MPI.COMM_WORLD.Bcast(grid_size, root=0)
+    else:
+        MPI.Finalize()
+
+    if rank == 0:
+        # create the pygame window
+        screen = pygame.display.set_mode( grid_size )
+        pygame.init()
+
+        image_array1 = pygame.surfarray.pixels3d( image )
+        image_array1 = image_array1.astype(int)
+
+        # setting the borders to red
+        image_array1[0, :] = [255, 0, 0]
+        image_array1[grid_size[0]-1, :] = [255, 0, 0]
+        image_array1[:, 0] = [255, 0, 0]
+        image_array1[:, grid_size[1]-1] = [255, 0, 0]
+
+        pygame.surfarray.blit_array(screen, image_array1)
+        pygame.display.flip()
+
     processor_grid_size = MPI.Compute_dims(size, 2)
     local_size          = [grid_size[0] / processor_grid_size[0] , grid_size[1] / processor_grid_size[1]]
     remainder_size      = [grid_size[0] % processor_grid_size[0] , grid_size[1] % processor_grid_size[1]]
@@ -71,6 +109,10 @@ if __name__ == '__main__':
 
     local_array = numpy.zeros(local_size, int)
     local_array[1:-1, 1:-1] = rank+1
+
+    # Done with the setup, sleep and wait for everyone to catch up
+    time.sleep(5)
+    communicator.barrier()
 
     # print("Rank {} Array \n{}".format(rank, local_array))
     # sys.stdout.flush()
