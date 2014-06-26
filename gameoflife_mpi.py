@@ -30,13 +30,13 @@ random.seed()
 
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='Game of Life MPI 1.0')
+    # if rank == 0:
+    #     print(arguments)
 
     size = MPI.COMM_WORLD.Get_size()
     rank = MPI.COMM_WORLD.Get_rank()
 
-    # if rank == 0:
-    #     print(arguments)
-
+    # global size of the image / starting array
     grid_size = numpy.array([16, 16])
 
     if arguments['random']:
@@ -52,12 +52,15 @@ if __name__ == '__main__':
             image = pygame.image.load( arguments['FILENAME'] )
             grid_size[0] = image.get_size()[0]
             grid_size[1] = image.get_size()[1]
+
+        # Let every process know the global grid size
         MPI.COMM_WORLD.Bcast(grid_size, root=0)
     else:
+        # Should not ever get here
         MPI.Finalize()
 
-    # processor_grid_size = MPI.Compute_dims(size, 2)
     processor_grid_size = [size, 1]
+    # processor_grid_size = MPI.Compute_dims(size, 2)
     local_size          = [grid_size[0] / processor_grid_size[0] , grid_size[1] / processor_grid_size[1]]
     remainder_size      = [grid_size[0] % processor_grid_size[0] , grid_size[1] % processor_grid_size[1]]
 
@@ -79,7 +82,19 @@ if __name__ == '__main__':
     communicator.barrier()
 
     start_indices = [processor_grid_coords[0] * local_size[0], processor_grid_coords[1] * local_size[1]]
+
     print("Rank {} location in Processor Grid: [{}, {}]  Starting Index: [{}, {}]".format(rank, processor_grid_coords[0], processor_grid_coords[1], start_indices[0], start_indices[1]))
+
+    file_type = MPI.INT.Create_subarray(grid_size, local_size, start_indices).Commit()
+    # MPI_Type_create_subarray(2, grid_size, local_size, start_indices, MPI_ORDER_C, MPI_CHAR, &filetype);
+    # MPI_Type_commit(&filetype);
+
+    mem_size = [local_size[0] + 2, local_size[1] + 2]
+    start_indices = [1, 1]
+
+    mem_type = MPI.INT.Create_subarray(mem_size, local_size, start_indices).Commit()
+    # MPI_Type_create_subarray(2, mem_size, local_size, start_indices, MPI_ORDER_C, MPI_CHAR, &memtype);
+    # MPI_Type_commit(&memtype);
 
     NORTH = 0
     SOUTH = 1
@@ -111,33 +126,53 @@ if __name__ == '__main__':
 
     # allocate a local array
     local_array = numpy.zeros(local_size, int)
-    local_array[1:-1, 1:-1] = rank+1
+    mem_array = numpy.zeros(mem_size, int)
+    mem_array[1:-1, 1:-1] = rank+1
+
+    if rank == 0:
+        global_grid = (image_array1[:,:,1:2] / 255).reshape((image_array1.shape[0], image_array1.shape[1]))
+        print("Rank {} Global Grid Shape {} \n{}".format(rank, global_grid.shape, global_grid))
+    else:
+        global_grid = numpy.zeros([0], int)
+
+    # communicator.Scatter( [global_grid, 1, file_type], [local_array, mem_type], root=0 )
+    communicator.Scatter( global_grid, local_array, root=0 )
+    mem_array[1:-1, 1:-1] = local_array
+    mem_array[1:-1, 1:-1] = rank+1
+    local_array = numpy.array( mem_array[1:-1, 1:-1] )
+
+    print("Rank {} Array Shape {} \n{}".format(rank, local_array.shape, local_array))
+    sys.stdout.flush()
+
+    communicator.Gather( local_array, global_grid, root=0 )
+
+    if rank == 0:
+        print("Rank {} Global Grid Shape {} \n{}".format(rank, global_grid.shape, global_grid))
 
     # Done with the setup, sleep and wait for everyone to catch up
-    time.sleep(5)
+    # time.sleep(5)
     communicator.barrier()
 
-    # print("Rank {} Array \n{}".format(rank, local_array))
-    # sys.stdout.flush()
-
     # Send my top row to my north neighbor, receive my bottom ghost row from my south neighbor
-    communicator.Sendrecv(sendbuf=local_array[1, :], dest=neighbors[NORTH], source=neighbors[SOUTH], recvbuf=local_array[-1, :])
+    communicator.Sendrecv(sendbuf=mem_array[1, :], dest=neighbors[NORTH], source=neighbors[SOUTH], recvbuf=mem_array[-1, :])
 
     # Send my bottom row to my sour neighbor, receive my top ghost row from my north neighbor
-    communicator.Sendrecv(sendbuf=local_array[-2, :], dest=neighbors[SOUTH], source=neighbors[NORTH], recvbuf=local_array[0, :])
+    communicator.Sendrecv(sendbuf=mem_array[-2, :], dest=neighbors[SOUTH], source=neighbors[NORTH], recvbuf=mem_array[0, :])
 
     # Send my left column to my east neighbor, receive my right ghost column from my west neighbor
-    left_column          = numpy.array(local_array[1:-1, 1].transpose())
-    received_left_column = numpy.zeros(local_size[0]-2, int)
+    left_column          = numpy.array(mem_array[1:-1, 1].transpose())
+    received_left_column = numpy.zeros(mem_size[0]-2, int)
     communicator.Sendrecv(sendbuf=left_column, dest=neighbors[EAST], source=neighbors[WEST], recvbuf=received_left_column)
-    local_array[1:-1, 0] = received_left_column.transpose()
+    mem_array[1:-1, 0] = received_left_column.transpose()
 
     # Send my right column to my west neighbor, receive my left ghost column from my east neighbor
-    right_column          = numpy.array(local_array[1:-1, -2].transpose())
-    received_right_column = numpy.zeros(local_size[0]-2, int)
+    right_column          = numpy.array(mem_array[1:-1, -2].transpose())
+    received_right_column = numpy.zeros(mem_size[0]-2, int)
     communicator.Sendrecv(sendbuf=right_column, dest=neighbors[WEST], source=neighbors[EAST], recvbuf=received_right_column)
-    local_array[1:-1, -1] = received_right_column.transpose()
+    mem_array[1:-1, -1] = received_right_column.transpose()
 
+    print("Rank {} Array Shape {} \n{}".format(rank, mem_array.shape, mem_array))
+    sys.stdout.flush()
     # print("Rank {} Array \n{}".format(rank, local_array))
     # sys.stdout.flush()
 
