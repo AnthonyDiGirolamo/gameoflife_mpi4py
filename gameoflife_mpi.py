@@ -56,24 +56,8 @@ if __name__ == '__main__':
     else:
         MPI.Finalize()
 
-    if rank == 0:
-        # create the pygame window
-        screen = pygame.display.set_mode( grid_size )
-        pygame.init()
-
-        image_array1 = pygame.surfarray.pixels3d( image )
-        image_array1 = image_array1.astype(int)
-
-        # setting the borders to red
-        image_array1[0, :] = [255, 0, 0]
-        image_array1[grid_size[0]-1, :] = [255, 0, 0]
-        image_array1[:, 0] = [255, 0, 0]
-        image_array1[:, grid_size[1]-1] = [255, 0, 0]
-
-        pygame.surfarray.blit_array(screen, image_array1)
-        pygame.display.flip()
-
-    processor_grid_size = MPI.Compute_dims(size, 2)
+    # processor_grid_size = MPI.Compute_dims(size, 2)
+    processor_grid_size = [size, 1]
     local_size          = [grid_size[0] / processor_grid_size[0] , grid_size[1] / processor_grid_size[1]]
     remainder_size      = [grid_size[0] % processor_grid_size[0] , grid_size[1] % processor_grid_size[1]]
 
@@ -107,6 +91,25 @@ if __name__ == '__main__':
     neighbors[EAST],  neighbors[WEST]  = communicator.Shift(1, 1)
     print("Rank {} Neighbors: North:{} South:{} East:{} West:{}".format(rank, *neighbors))
 
+    # Initialize the pygame window
+    if rank == 0:
+        # create the pygame window
+        screen = pygame.display.set_mode( grid_size )
+        pygame.init()
+
+        image_array1 = pygame.surfarray.pixels3d( image )
+        image_array1 = image_array1.astype(int)
+
+        # setting the borders to red
+        image_array1[0, :] = [255, 0, 0]
+        image_array1[grid_size[0]-1, :] = [255, 0, 0]
+        image_array1[:, 0] = [255, 0, 0]
+        image_array1[:, grid_size[1]-1] = [255, 0, 0]
+
+        pygame.surfarray.blit_array(screen, image_array1)
+        pygame.display.flip()
+
+    # allocate a local array
     local_array = numpy.zeros(local_size, int)
     local_array[1:-1, 1:-1] = rank+1
 
@@ -135,7 +138,7 @@ if __name__ == '__main__':
     communicator.Sendrecv(sendbuf=right_column, dest=neighbors[WEST], source=neighbors[EAST], recvbuf=received_right_column)
     local_array[1:-1, -1] = received_right_column.transpose()
 
-    print("Rank {} Array \n{}".format(rank, local_array))
-    sys.stdout.flush()
+    # print("Rank {} Array \n{}".format(rank, local_array))
+    # sys.stdout.flush()
 
     MPI.Finalize()
