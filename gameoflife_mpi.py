@@ -54,8 +54,8 @@ if __name__ == '__main__':
     size = MPI.COMM_WORLD.Get_size()
     rank = MPI.COMM_WORLD.Get_rank()
 
-    # if rank == 0:
-    #     print(arguments)
+    if rank == 0:
+        print(arguments)
 
     # global size of the image / starting array
     grid_size = numpy.array([16, 16])
@@ -175,12 +175,29 @@ if __name__ == '__main__':
     if rank == 0:
         # does this always allocate a new contiguous array?
         global_grid = numpy.array((image_array1[:,:,1:2] / 255).reshape((image_array1.shape[0], image_array1.shape[1])))
-        print("Rank {} Global Grid Shape {} \n{}".format(rank, global_grid.shape, global_grid))
+        # print("Rank {} Global Grid Shape {} \n{}".format(rank, global_grid.shape, global_grid))
     else:
         global_grid = numpy.zeros([0], int)
 
     # communicator.Scatter( [global_grid, 1, file_type], [local_array, mem_type], root=0 )
-    communicator.Scatter( global_grid, local_array, root=0 )
+
+    # This is transposing the data for some reason
+    # communicator.Scatter( global_grid, local_array, root=0 )
+
+    # manually distribute data with send and recvs
+    if rank == 0:
+        # get rank 0's copy
+        local_array = global_grid[0:local_size[0],:]
+
+        # send rank 1 and up their copy
+        for node in range(1, size):
+            this_processor_grid_coords = communicator.Get_coords(node)
+            this_start_indices = [this_processor_grid_coords[0] * local_size[0], this_processor_grid_coords[1] * local_size[1]]
+            print("{} {}".format(node, this_start_indices))
+            communicator.Send(global_grid[this_start_indices[0]:this_start_indices[0]+local_size[0],:].copy(), node)
+    else:
+        communicator.Recv(local_array, source=0)
+
     mem_array[1:-1, 1:-1] = local_array
 
     print("Rank {} Array Shape {} \n{}".format(rank, mem_array.shape, mem_array))
@@ -196,6 +213,7 @@ if __name__ == '__main__':
 
     # copy mem_array into the image array
     image_array1[:,:,1:2] = numpy.expand_dims(mem_array, axis=2) * 255
+
     # it = numpy.nditer(image_array1, flags=['multi_index'], op_flags=['readwrite'])
     # while not it.finished:
     #    x = it.multi_index[0]
@@ -225,17 +243,23 @@ if __name__ == '__main__':
         # Send my bottom row to my sour neighbor, receive my top ghost row from my north neighbor
         communicator.Sendrecv(sendbuf=mem_array[-2, :], dest=neighbors[SOUTH], source=neighbors[NORTH], recvbuf=mem_array[0, :])
 
-        # Send my left column to my east neighbor, receive my right ghost column from my west neighbor
-        left_column          = numpy.array(mem_array[1:-1, 1].transpose())
-        received_left_column = numpy.zeros(mem_size[0]-2, int)
-        communicator.Sendrecv(sendbuf=left_column, dest=neighbors[EAST], source=neighbors[WEST], recvbuf=received_left_column)
-        mem_array[1:-1, 0] = received_left_column.transpose()
+        # # Send my left column to my east neighbor, receive my right ghost column from my west neighbor
+        # left_column          = numpy.array(mem_array[1:-1, 1].transpose())
+        # received_left_column = numpy.zeros(mem_size[0]-2, int)
+        # communicator.Sendrecv(sendbuf=left_column, dest=neighbors[EAST], source=neighbors[WEST], recvbuf=received_left_column)
+        # mem_array[1:-1, 0] = received_left_column.transpose().copy()
 
-        # Send my right column to my west neighbor, receive my left ghost column from my east neighbor
-        right_column          = numpy.array(mem_array[1:-1, -2].transpose())
-        received_right_column = numpy.zeros(mem_size[0]-2, int)
-        communicator.Sendrecv(sendbuf=right_column, dest=neighbors[WEST], source=neighbors[EAST], recvbuf=received_right_column)
-        mem_array[1:-1, -1] = received_right_column.transpose()
+        # copy the left column to the right column
+        mem_array[1:-1, 0] = mem_array[1:-1, -2]
+
+        # # Send my right column to my west neighbor, receive my left ghost column from my east neighbor
+        # right_column          = numpy.array(mem_array[1:-1, -2].transpose())
+        # received_right_column = numpy.zeros(mem_size[0]-2, int)
+        # communicator.Sendrecv(sendbuf=right_column, dest=neighbors[WEST], source=neighbors[EAST], recvbuf=received_right_column)
+        # mem_array[1:-1, -1] = received_right_column.transpose().copy()
+
+        # copy the right column to the left column
+        mem_array[1:-1, -1] = mem_array[1:-1, 1]
 
         # run game of life
         game_of_life(mem_array)
